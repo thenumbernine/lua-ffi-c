@@ -7,11 +7,17 @@ local CClass = class()
 
 CClass.CC = 'gcc'
 CClass.CFLAGS = '-Wall -fPIC'
-CClass.LDFLAGS = '-dynamiclib'
+CClass.LDFLAGS = assert(({
+	OSX = '-dynamiclib',
+	Linux = '-shared',
+})[ffi.os])
 CClass.srcSuffix = '.c'
 CClass.objSuffix = '.o'
 CClass.libPrefix = 'lib'
-CClass.libSuffix = '.dylib'
+CClass.libSuffix = assert(({
+	OSX = '.dylib',
+	Linux = '.so',
+})[ffi.os])
 function CClass:init()
 	self.libfiles = table()
 end
@@ -33,8 +39,12 @@ function CClass:compile(code)
 	self.libfiles:insert(libfile)
 	file[srcfile] = code
 	-- 2) compile to so
-	assert(0 == os.execute(self.CC..' '..self.CFLAGS..' -c -o '..objfile..' '..srcfile), "failed to build c code")
-	assert(0 == os.execute(self.CC..' '..self.CFLAGS..' '..self.LDFLAGS..' -o '..libfile..' '..objfile), "failed to link c code")
+	local cmd = self.CC..' '..self.CFLAGS..' -c -o '..objfile..' '..srcfile
+	print(cmd)	
+	assert(0 == os.execute(cmd), "failed to build c code")
+	local cmd = self.CC..' '..self.CFLAGS..' '..self.LDFLAGS..' -o '..libfile..' '..objfile
+	print(cmd)	
+	assert(0 == os.execute(cmd), "failed to link c code")
 	-- 3) load into ffi
 	local lib = ffi.load(libfile)
 	-- 4) don't delete the dynamic library! some OS's get mad when you delete a dynamically-loaded shared object
