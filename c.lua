@@ -40,13 +40,13 @@ function CClass:compile(code)
 	file[srcfile] = code
 	-- 2) compile to so
 	local cmd = self.CC..' '..self.CFLAGS..' -c -o '..objfile..' '..srcfile
-	print(cmd)	
+	--print(cmd)
 	assert(0 == os.execute(cmd), "failed to build c code")
 	local cmd = self.CC..' '..self.CFLAGS..' '..self.LDFLAGS..' -o '..libfile..' '..objfile
-	print(cmd)	
+	--print(cmd)	
 	assert(0 == os.execute(cmd), "failed to link c code")
 	-- 3) load into ffi
-	local lib = ffi.load(libfile)
+	local lib = ffi.load('./'..libfile)
 	-- 4) don't delete the dynamic library! some OS's get mad when you delete a dynamically-loaded shared object
 	-- but go ahead and delete the source code
 	-- TODO ffi __gc delete the dll file once the lib is no longer used
