@@ -8,14 +8,16 @@ You can either manually invoke the compiler and the ffi prototype like so:
 
 ```lua
 local cpp = require 'cpp'
-cpp:compile[[ int sum(int a, int b) { return a + b; } ]]
+local lib = cpp:compile[[ int sum(int a, int b) { return a + b; } ]]
 local ffi = require 'ffi'
 ffi.cdef[[ int sum(int a, int b); ]]
+print(lib.sum(a,b))
 ```
 
 or, for the truly lazy programmer, you can combine both these actions in one fell swoop:
 
 ```lua
 local cpp = require 'cpp'
-cpp:func('int sum (int a, int b)', 'return a + 1;')
+local lib = cpp:func('int sum (int a, int b)', 'return a + 1;')
+print(lib.sum(a,b))
 ```
