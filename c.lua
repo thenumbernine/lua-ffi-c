@@ -84,8 +84,7 @@ function CClass:compile(code)
 	return lib
 end
 
-function CClass:func(returnType, name, params, body, prefix)
-	local prototype = returnType..' '..name..'('..params..')'
+function CClass:func(prototype, body)
 	local lib = self:compile((self.funcPrefix or '')..' '..prototype..'{'..body..'}')
 	ffi.cdef(prototype..';')
 	return lib
