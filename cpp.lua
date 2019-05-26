@@ -1,5 +1,5 @@
 local class = require 'ext.class'
-local CClass = getmetatable(require 'c')
+local CClass = getmetatable(require 'ffi-c.c')
 
 local CppClass = class(CClass)
 CppClass.CC = 'g++'
