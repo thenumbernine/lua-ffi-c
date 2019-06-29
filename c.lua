@@ -2,21 +2,32 @@ local ffi = require 'ffi'
 local class = require 'ext.class'
 local file = require 'ext.file'
 local table = require 'ext.table'
+local io = require 'ext.io'
 
+-- TODO lua-make, move the classes into a separate library of compiler specs, and use it here too
 local CClass = class()
 
-CClass.CC = 'gcc'
-CClass.CFLAGS = '-Wall -fPIC'
+CClass.CC = ffi.os == 'Windows' and 'cl.exe' or 'gcc'
+CClass.CFLAGS = ({
+	OSX = '-Wall -fPIC',
+	Linux = '-Wall -fPIC',
+	Windows = '/nologo',
+})[ffi.os]
 CClass.LDFLAGS = assert(({
 	OSX = '-dynamiclib',
 	Linux = '-shared',
+	Windows = '/dll'
 })[ffi.os])
+CClass.compileOutputFlag = ffi.os == 'Windows' and '/Fo' or '-o '
 CClass.srcSuffix = '.c'
-CClass.objSuffix = '.o'
-CClass.libPrefix = 'lib'
+CClass.objSuffix = ffi.os == 'Windows' and '.obj' or '.o'
+CClass.LD = ffi.os == 'Windows' and 'link.exe' or 'gcc'	-- or 'ld' ?
+CClass.linkOutputFlag = ffi.os == 'Windows' and '/out:' or '-o '
+CClass.libPrefix = ffi.os == 'Windows' and '' or 'lib'
 CClass.libSuffix = assert(({
 	OSX = '.dylib',
 	Linux = '.so',
+	Windows = '.dll',
 })[ffi.os])
 
 
@@ -58,30 +69,55 @@ function CClass:cleanup()
 	cobjs[self.cobjIndex] = nil
 end
 
+local function exec(cmd)
+	print(cmd)
+	local results = table.pack(os.execute(cmd))
+	--print(require 'ext.tolua'(results))
+	print(table.unpack(results, 1, results.n))
+	return table.unpack(results, 1, results.n)
+end
+
 function CClass:compile(code)
 	-- 1) write out code
 	local libIndex = #self.libfiles+1
 	local name = 'libtmp-'..self.cobjIndex..'-'..libIndex
 	local srcfile = name..self.srcSuffix
 	local objfile = name..self.objSuffix
-	local libfile = self.libPrefix..name..self.libSuffix
-	self.libfiles:insert(libfile)
+	local result = {}
+	result.libfile = self.libPrefix..name..self.libSuffix
+	self.libfiles:insert(result.libfile)
 	file[srcfile] = code
 	-- 2) compile to so
-	local cmd = self.CC..' '..self.CFLAGS..' -c -o '..objfile..' '..srcfile
+	local cmd = self.CC..' '..self.CFLAGS..' -c '..self.compileOutputFlag..objfile..' '..srcfile
+		--..' > tmp 2>&1'
+		..' | tee tmp'
 	--print(cmd)
-	assert(os.execute(cmd), "failed to build c code")
-	local cmd = self.CC..' '..self.CFLAGS..' '..self.LDFLAGS..' -o '..libfile..' '..objfile
-	--print(cmd)	
-	assert(os.execute(cmd), "failed to link c code")
+	local status = exec(cmd)
+	result.compileLog = io.readfile'tmp'
+	os.remove'tmp'
+	if not status then
+		result.error = "failed to build c code"
+		return result
+	end
+	local cmd = self.LD..' '..self.CFLAGS..' '..self.LDFLAGS..' '..self.linkOutputFlag..result.libfile..' '..objfile
+		--..' > tmp 2>&1'
+		..' | tee tmp'
+	--print(cmd)
+	local status = exec(cmd)
+	result.linkLog = io.readfile'tmp'
+	os.remove'tmp'
+	if not status then
+		result.error = "failed to link c code"
+		return result
+	end
 	-- 3) load into ffi
-	local lib = ffi.load('./'..libfile)
+	result.lib = ffi.load('./'..result.libfile)
 	-- 4) don't delete the dynamic library! some OS's get mad when you delete a dynamically-loaded shared object
 	-- but go ahead and delete the source code
 	-- ffi __gc will delete the dll file once the lib is no longer used
-	os.remove(srcfile)
-	os.remove(objfile)
-	return lib
+--	os.remove(srcfile)
+--	os.remove(objfile)
+	return result
 end
 
 function CClass:func(prototype, body)
