@@ -1,7 +1,7 @@
 #!/usr/bin/env luajit
 
-local c = require 'c'
-local cpp = require 'cpp'
+local c = require 'ffi-c.c'
+local cpp = require 'ffi-c.cpp'
 
 local sum = c:func('int sum(int a, int b)', 'return a + b;')
 print(sum.sum(2,3))

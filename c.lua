@@ -8,7 +8,7 @@ local MakeEnv = require 'make.env'
 
 local CClass = class()
 CClass.srcSuffix = '.c'
-CClass.funcPrefix = '' 
+CClass.funcPrefix = ''
 
 -- this has to hold all compile classes - no overlaps are allowed
 -- because it is used in the unique naming
@@ -34,7 +34,6 @@ local CClass_gc_t = ffi.metatype('CClass_gc_t', {
 })
 
 function CClass:init()
-	self.env = MakeEnv()
 	self.libfiles = table()
 	cobjs:insert(self)
 	self.cobjIndex = #cobjs
@@ -61,6 +60,22 @@ function CClass:compile(code)
 	-- 1) write out code
 	local libIndex = #self.libfiles+1
 	local name = 'libtmp-'..self.cobjIndex..'-'..libIndex
+
+	self.env = MakeEnv()
+	self.env.distName = name
+	self.env.distType = 'lib'
+	self.env.build = 'release'	-- TODO make a ctor
+	self.env.useStatic = false	-- TODO arg
+	self.env:preConfig()		-- TODO ctor instead?
+
+	-- TODO build this into the make.env somehow?
+	if self.env.name == 'msvc' then
+		code = '__declspec(dllexport) ' .. code
+	end
+	if self.funcPrefix then
+		code = self.funcPrefix..' '..code
+	end
+
 	local srcfile = name..self.srcSuffix
 	local objfile = name..self.env.objSuffix
 	local result = {}
@@ -68,16 +83,14 @@ function CClass:compile(code)
 	self.libfiles:insert(result.libfile)
 	file[srcfile] = code
 	-- 2) compile to so
-	self.env:buildObj(objfile, srcfile) 	-- TODO allow capture output log
-	--result.compileLog = io.readfile'tmp'
-	os.remove'tmp'
+	local status, compileLog = self.env:buildObj(objfile, srcfile) 	-- TODO allow capture output log
+	result.compileLog = compileLog 
 	if not status then
 		result.error = "failed to build c code"
 		return result
 	end
-	self.env:buildDist(result.libfile, {objfile})	-- TODO allow capture output log
-	--result.linkLog = io.readfile'tmp'
-	os.remove'tmp'
+	local status, linkLog = self.env:buildDist(result.libfile, {objfile})	-- TODO allow capture output log
+	result.linkLog = linkLog
 	if not status then
 		result.error = "failed to link c code"
 		return result
@@ -93,9 +106,10 @@ function CClass:compile(code)
 end
 
 function CClass:func(prototype, body)
-	local lib = self:compile((self.funcPrefix or '')..' '..prototype..'{'..body..'}')
+	local result = self:compile(prototype..'{'..body..'}')
+	if result.error then error(require 'ext.tolua'(result)) end
 	ffi.cdef(prototype..';')
-	return lib
+	return result.lib
 end
 
 return CClass()
