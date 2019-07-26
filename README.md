@@ -21,3 +21,5 @@ local cpp = require 'cpp'
 local lib = cpp:func('int sum (int a, int b)', 'return a + 1;')
 print(lib.sum(a,b))
 ```
+
+Depends on my lua-ext, lua-template, and lua-make libraries

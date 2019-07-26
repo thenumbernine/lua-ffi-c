@@ -4,32 +4,11 @@ local file = require 'ext.file'
 local table = require 'ext.table'
 local io = require 'ext.io'
 
--- TODO lua-make, move the classes into a separate library of compiler specs, and use it here too
+local MakeEnv = require 'make.env'
+
 local CClass = class()
-
-CClass.CC = ffi.os == 'Windows' and 'cl.exe' or 'gcc'
-CClass.CFLAGS = ({
-	OSX = '-Wall -fPIC',
-	Linux = '-Wall -fPIC',
-	Windows = '/nologo',
-})[ffi.os]
-CClass.LDFLAGS = assert(({
-	OSX = '-dynamiclib',
-	Linux = '-shared',
-	Windows = '/dll'
-})[ffi.os])
-CClass.compileOutputFlag = ffi.os == 'Windows' and '/Fo' or '-o '
 CClass.srcSuffix = '.c'
-CClass.objSuffix = ffi.os == 'Windows' and '.obj' or '.o'
-CClass.LD = ffi.os == 'Windows' and 'link.exe' or 'gcc'	-- or 'ld' ?
-CClass.linkOutputFlag = ffi.os == 'Windows' and '/out:' or '-o '
-CClass.libPrefix = ffi.os == 'Windows' and '' or 'lib'
-CClass.libSuffix = assert(({
-	OSX = '.dylib',
-	Linux = '.so',
-	Windows = '.dll',
-})[ffi.os])
-
+CClass.funcPrefix = '' 
 
 -- this has to hold all compile classes - no overlaps are allowed
 -- because it is used in the unique naming
@@ -55,6 +34,7 @@ local CClass_gc_t = ffi.metatype('CClass_gc_t', {
 })
 
 function CClass:init()
+	self.env = MakeEnv()
 	self.libfiles = table()
 	cobjs:insert(self)
 	self.cobjIndex = #cobjs
@@ -82,29 +62,21 @@ function CClass:compile(code)
 	local libIndex = #self.libfiles+1
 	local name = 'libtmp-'..self.cobjIndex..'-'..libIndex
 	local srcfile = name..self.srcSuffix
-	local objfile = name..self.objSuffix
+	local objfile = name..self.env.objSuffix
 	local result = {}
-	result.libfile = self.libPrefix..name..self.libSuffix
+	result.libfile = self.env.libPrefix..name..self.env.libSuffix
 	self.libfiles:insert(result.libfile)
 	file[srcfile] = code
 	-- 2) compile to so
-	local cmd = self.CC..' '..self.CFLAGS..' -c '..self.compileOutputFlag..objfile..' '..srcfile
-		--..' > tmp 2>&1'
-		..' | tee tmp'
-	--print(cmd)
-	local status = exec(cmd)
-	result.compileLog = io.readfile'tmp'
+	self.env:buildObj(objfile, srcfile) 	-- TODO allow capture output log
+	--result.compileLog = io.readfile'tmp'
 	os.remove'tmp'
 	if not status then
 		result.error = "failed to build c code"
 		return result
 	end
-	local cmd = self.LD..' '..self.CFLAGS..' '..self.LDFLAGS..' '..self.linkOutputFlag..result.libfile..' '..objfile
-		--..' > tmp 2>&1'
-		..' | tee tmp'
-	--print(cmd)
-	local status = exec(cmd)
-	result.linkLog = io.readfile'tmp'
+	self.env:buildDist(result.libfile, {objfile})	-- TODO allow capture output log
+	--result.linkLog = io.readfile'tmp'
 	os.remove'tmp'
 	if not status then
 		result.error = "failed to link c code"
