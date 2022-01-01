@@ -66,8 +66,26 @@ function CClass:compile(code)
 	self.env.distType = 'lib'
 	self.env.build = 'release'	-- TODO make a ctor
 	self.env.useStatic = false	-- TODO arg
-	self.env:preConfig()		-- TODO ctor instead?
 
+-- [[
+	self.env.cppver = 'c99'		-- TODO this should be 'std' or 'stdver' instead of 'cppver' ... since this isn't C++, it's C
+	self.env:preConfig()		-- TODO ctor instead?
+	self.env:postConfig()
+--]]
+--[[ requires buildinfo file ...
+	self.env:setupBuild'release'
+--]]
+
+-- TODO do this in make.env
+-- determine compiler based on suffix
+if self.env.compiler == 'g++' then
+	self.env.compiler = 'gcc'
+end
+if self.env.linker == 'g++' then
+	self.env.linker = 'gcc'
+	self.env.libs:insert'm'
+end
+	
 	-- TODO build this into the make.env somehow?
 	if self.env.name == 'msvc' then
 		code = '__declspec(dllexport) ' .. code
