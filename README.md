@@ -1,3 +1,5 @@
+[![paypal](https://www.paypalobjects.com/en_US/i/btn/btn_donateCC_LG.gif)](https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&hosted_button_id=KYWUWS86GSFGL)
+
 # Write C/C++ code inline in your Lua code!
 
 For the lazy individuals who want to include optimized C++ code in their Lua code,

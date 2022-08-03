@@ -100,21 +100,27 @@ end
 	result.libfile = self.env.libPrefix..name..self.env.libSuffix
 	self.libfiles:insert(result.libfile)
 	file[srcfile] = code
+	
 	-- 2) compile to so
+	self.env.objLogFile = name..'-obj.log'
 	local status, compileLog = self.env:buildObj(objfile, srcfile) 	-- TODO allow capture output log
 	result.compileLog = compileLog 
 	if not status then
 		result.error = "failed to build c code"
 		return result
 	end
+	
+	self.env.distLogFile = name..'-dist.log'
 	local status, linkLog = self.env:buildDist(result.libfile, {objfile})	-- TODO allow capture output log
 	result.linkLog = linkLog
 	if not status then
 		result.error = "failed to link c code"
 		return result
 	end
+	
 	-- 3) load into ffi
 	result.lib = ffi.load('./'..result.libfile)
+	
 	-- 4) don't delete the dynamic library! some OS's get mad when you delete a dynamically-loaded shared object
 	-- but go ahead and delete the source code
 	-- ffi __gc will delete the dll file once the lib is no longer used
