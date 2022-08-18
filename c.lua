@@ -115,7 +115,7 @@ end
 	end
 
 	local objfiles = table{objfile}
-	self:addExtraObjFiles(objfiles)
+	self:addExtraObjFiles(objfiles, result)
 
 	self.env.distLogFile = name..'-dist.log'
 	local status, linkLog = self.env:buildDist(result.libfile, objfiles)	-- TODO allow capture output log
