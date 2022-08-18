@@ -1,4 +1,5 @@
 local ffi = require 'ffi'
+local GCWrapper = require 'ffi.gcwrapper.gcwrapper'
 local class = require 'ext.class'
 local file = require 'ext.file'
 local table = require 'ext.table'
@@ -6,44 +7,46 @@ local io = require 'ext.io'
 
 local MakeEnv = require 'make.env'
 
-local CClass = class()
-CClass.srcSuffix = '.c'
-CClass.funcPrefix = ''
 
 -- this has to hold all compile classes - no overlaps are allowed
 -- because it is used in the unique naming
 -- keep track of stuff from __gc to :cleanup()
-local cobjs = table()	
+local cobjs = table()
 
-ffi.cdef[[
-typedef struct {
-	int ptr[1];
-} CClass_gc_t;
-]]
-local CClass_gc_t = ffi.metatype('CClass_gc_t', {
-	__gc = function(obj)
-		local index = obj.ptr[0]
+local CClass = class(GCWrapper{
+	gctype = 'CClass_gc_t',
+	ctype = 'int',
+	release = function(ptr)
+		local index = ptr[0]
+--print('releasing, ptr[0]='..index)
 		if index ~= 0 then
+--print('releasing, ptr[0] nonzero')
 			local cobj = cobjs[index]
+--print('releasing, cobj=', cobj)
 			if cobj then
+--print('releasing, cleanup')
 				cobj:cleanup()
 			end
-			obj.ptr[0] = 0
+			ptr[0] = 0
 		end
 	end,
 })
 
+CClass.srcSuffix = '.c'
+CClass.funcPrefix = ''
+
 function CClass:init()
+	CClass.super.init(self)
 	self.libfiles = table()
 	cobjs:insert(self)
 	self.cobjIndex = #cobjs
-	self.id = CClass_gc_t()
-	self.id.ptr[0] = self.cobjIndex
+	self.gc.ptr[0] = self.cobjIndex
 end
 
 function CClass:cleanup()
+--print'cleaning up'
 	for _,libfile in ipairs(self.libfiles) do
-		os.remove(libfile)
+--		os.remove(libfile)
 	end
 	cobjs[self.cobjIndex] = nil
 end
@@ -104,7 +107,7 @@ end
 	-- 2) compile to so
 	self.env.objLogFile = name..'-obj.log'
 	local status, compileLog = self.env:buildObj(objfile, srcfile) 	-- TODO allow capture output log
-	result.compileLog = compileLog 
+	result.compileLog = compileLog
 	if not status then
 		result.error = "failed to build c code"
 		return result
