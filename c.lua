@@ -46,7 +46,8 @@ end
 function CClass:cleanup()
 --print'cleaning up'
 	for _,libfile in ipairs(self.libfiles) do
---		os.remove(libfile)
+		os.remove(libfile)
+-- TODO remove the other files , not just the library?
 	end
 	cobjs[self.cobjIndex] = nil
 end
@@ -112,9 +113,12 @@ end
 		result.error = "failed to build c code"
 		return result
 	end
-	
+
+	local objfiles = table{objfile}
+	self:addExtraObjFiles(objfiles)
+
 	self.env.distLogFile = name..'-dist.log'
-	local status, linkLog = self.env:buildDist(result.libfile, {objfile})	-- TODO allow capture output log
+	local status, linkLog = self.env:buildDist(result.libfile, objfiles)	-- TODO allow capture output log
 	result.linkLog = linkLog
 	if not status then
 		result.error = "failed to link c code"
@@ -130,6 +134,10 @@ end
 --	os.remove(srcfile)
 --	os.remove(objfile)
 	return result
+end
+
+-- subclasses can add any other .o's 
+function CClass:addExtraObjFiles(objfiles)
 end
 
 function CClass:func(prototype, body)
