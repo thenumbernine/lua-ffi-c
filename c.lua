@@ -63,7 +63,7 @@ end
 function CClass:compile(code)
 	-- 1) write out code
 	local libIndex = #self.libfiles+1
-	local name = 'libtmp-'..self.cobjIndex..'-'..libIndex
+	local name = 'libtmp_'..self.cobjIndex..'_'..libIndex
 
 	self.env = MakeEnv()
 	self.env.distName = name
@@ -72,7 +72,7 @@ function CClass:compile(code)
 	self.env.useStatic = false	-- TODO arg
 
 -- [[
-	self.env.cppver = 'c99'		-- TODO this should be 'std' or 'stdver' instead of 'cppver' ... since this isn't C++, it's C
+	self.env.cppver = 'c11'		-- TODO this should be 'std' or 'stdver' instead of 'cppver' ... since this isn't C++, it's C
 	self.env:preConfig()		-- TODO ctor instead?
 	self.env:postConfig()
 --]]
