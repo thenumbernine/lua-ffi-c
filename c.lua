@@ -60,7 +60,15 @@ local function exec(cmd)
 	return table.unpack(results, 1, results.n)
 end
 
-function CClass:compile(code)
+function CClass:compile(args)
+	local code
+	if type(args) == 'string' then
+		args = {code = args}
+	else
+		assert(type(args) == 'table')
+	end
+	code = args.code
+
 	-- 1) write out code
 	local libIndex = #self.libfiles+1
 	local name = 'libtmp_'..self.cobjIndex..'_'..libIndex
@@ -68,11 +76,11 @@ function CClass:compile(code)
 	self.env = MakeEnv()
 	self.env.distName = name
 	self.env.distType = 'lib'
-	self.env.build = 'release'	-- TODO make a ctor
+	self.env.build = args.build or 'release'	-- TODO make a ctor
 	self.env.useStatic = false	-- TODO arg
 
 -- [[
-	self.env.cppver = 'c11'		-- TODO this should be 'std' or 'stdver' instead of 'cppver' ... since this isn't C++, it's C
+	self.env.cppver = args.cppver or 'c11'		-- TODO this should be 'std' or 'stdver' instead of 'cppver' ... since this isn't C++, it's C
 	self.env:preConfig()		-- TODO ctor instead?
 	self.env:postConfig()
 --]]
