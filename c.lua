@@ -3,7 +3,6 @@ local GCWrapper = require 'ffi.gcwrapper.gcwrapper'
 local class = require 'ext.class'
 local file = require 'ext.file'
 local table = require 'ext.table'
-local io = require 'ext.io'
 
 local MakeEnv = require 'make.env'
 
@@ -46,7 +45,7 @@ end
 function CClass:cleanup()
 --print'cleaning up'
 	for _,libfile in ipairs(self.libfiles) do
-		os.remove(libfile)
+		file(libfile):remove()
 -- TODO remove the other files , not just the library?
 	end
 	cobjs[self.cobjIndex] = nil
@@ -111,7 +110,7 @@ end
 	local result = {}
 	result.libfile = self.env.libPrefix..name..self.env.libSuffix
 	self.libfiles:insert(result.libfile)
-	file[srcfile] = code
+	file(srcfile):write(code)
 	
 	-- 2) compile to so
 	self.env.objLogFile = name..'-obj.log'
@@ -139,8 +138,8 @@ end
 	-- 4) don't delete the dynamic library! some OS's get mad when you delete a dynamically-loaded shared object
 	-- but go ahead and delete the source code
 	-- ffi __gc will delete the dll file once the lib is no longer used
---	os.remove(srcfile)
---	os.remove(objfile)
+--	file(srcfile):remove()
+--	file(objfile):remove()
 	return result
 end
 
