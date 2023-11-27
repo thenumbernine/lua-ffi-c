@@ -64,7 +64,8 @@ function CClass:getBuildDir()
 	return '/tmp'
 end
 
-function CClass:compile(args)
+-- setup build env obj and write code file
+function CClass:setup(args)
 	local code
 	if type(args) == 'string' then
 		args = {code = args}
@@ -101,7 +102,7 @@ if self.env.linker == 'g++' then
 	self.env.linker = 'gcc'
 	self.env.libs:insert'm'
 end
-	
+
 	-- TODO build this into the make.env somehow?
 	if self.env.name == 'msvc' then
 		code = '__declspec(dllexport) ' .. code
@@ -110,41 +111,68 @@ end
 		code = self.funcPrefix..' '..code
 	end
 
-	local srcfile = name..self.srcSuffix
-	local objfile = name..self.env.objSuffix
 	local result = {}
+	result.srcfile = name..self.srcSuffix
+	result.objfile = name..self.env.objSuffix
 	result.libfile = self.env.libPrefix..name..self.env.libSuffix
 	self.libfiles:insert(result.libfile)
-	path(srcfile):write(code)
+	path(result.srcfile):write(code)
 	
-	-- 2) compile to so
+	return result
+end
+
+function CClass:build(args, result)
+	result = result or {}
+	local name = self.env.distName
 	self.env.objLogFile = name..'-obj.log'
-	local status, compileLog = self.env:buildObj(objfile, srcfile) 	-- TODO allow capture output log
+	local status, compileLog = self.env:buildObj(result.objfile, result.srcfile) 	-- TODO allow capture output log
 	result.compileLog = compileLog
 	if not status then
 		result.error = "failed to build c code"
-		return result
 	end
+	return result
+end
 
-	local objfiles = table{objfile}
+function CClass:link(args, result)
+	result = result or {}
+
+	local objfiles = table{result.objfile}
 	self:addExtraObjFiles(objfiles, result)
 
+	local name = self.env.distName
 	self.env.distLogFile = name..'-dist.log'
 	local status, linkLog = self.env:buildDist(result.libfile, objfiles)	-- TODO allow capture output log
 	result.linkLog = linkLog
 	if not status then
 		result.error = "failed to link c code"
-		return result
 	end
+	return result
+end
+
+function CClass:load(args, result)
+	result.lib = ffi.load('./'..result.libfile)
+	return result
+end
+
+function CClass:compile(args)
+	local result = self:setup(args)
+
+	-- 2) compile to so
+	result = self:build(args, result)
+	if result.error then return result end
+
+	result = self:link(args, result)
+	if result.error then return result end
 	
 	-- 3) load into ffi
-	result.lib = ffi.load('./'..result.libfile)
+	result = self:load(args, result)
 	
 	-- 4) don't delete the dynamic library! some OS's get mad when you delete a dynamically-loaded shared object
 	-- but go ahead and delete the source code
 	-- ffi __gc will delete the dll file once the lib is no longer used
---	path(srcfile):remove()
---	path(objfile):remove()
+--	path(result.srcfile):remove()
+--	path(result.objfile):remove()
+
 	return result
 end
 
