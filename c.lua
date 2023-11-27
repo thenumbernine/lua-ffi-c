@@ -65,119 +65,129 @@ function CClass:getBuildDir()
 end
 
 -- setup build env obj and write code file
-function CClass:setup(args, result)
-	result = result or {}
+function CClass:setup(args, ctx)
+	ctx = ctx or {}
 
-	local code = args.code
+	ctx.code = args.code
 
 	-- 1) write out code
 	local libIndex = #self.libfiles+1
-	local name = self:getBuildDir()..'/libtmp_'..self.cobjIndex..'_'..libIndex
+	ctx.name = 'libtmp_'..self.cobjIndex..'_'..libIndex
 
-	self.env = MakeEnv()
-	self.env.distName = name
-	self.env.distType = 'lib'
-	self.env.build = args.build or 'release'	-- TODO make a ctor
-	self.env.useStatic = false	-- TODO arg
+	ctx.env = MakeEnv()
+	ctx.env.distName = ctx.name
+	ctx.env.distType = 'lib'
+	ctx.env.build = args.build or 'release'	-- TODO make a ctor
+	ctx.env.useStatic = false	-- TODO arg
 
 -- [[
-	self.env.cppver = args.cppver or 'c11'		-- TODO this should be 'std' or 'stdver' instead of 'cppver' ... since this isn't C++, it's C
-	self.env:preConfig()		-- TODO ctor instead?
-	self.env:postConfig()
+	ctx.env.cppver = args.cppver or 'c11'		-- TODO this should be 'std' or 'stdver' instead of 'cppver' ... since this isn't C++, it's C
+	ctx.env:preConfig()		-- TODO ctor instead?
+	ctx.env:postConfig()
 --]]
 --[[ requires buildinfo file ...
-	self.env:setupBuild'release'
+	ctx.env:setupBuild'release'
 --]]
 
 -- TODO do this in make.env
 -- determine compiler based on suffix
-if self.env.compiler == 'g++' then
-	self.env.compiler = 'gcc'
+if ctx.env.compiler == 'g++' then
+	ctx.env.compiler = 'gcc'
 end
-if self.env.linker == 'g++' then
-	self.env.linker = 'gcc'
-	self.env.libs:insert'm'
+if ctx.env.linker == 'g++' then
+	ctx.env.linker = 'gcc'
+	ctx.env.libs:insert'm'
 end
 
 	-- TODO build this into the make.env somehow?
-	if self.env.name == 'msvc' then
-		code = '__declspec(dllexport) ' .. code
+	if ctx.env.name == 'msvc' then
+		ctx.code = '__declspec(dllexport) ' .. ctx.code
 	end
+	-- for using ffi-c in the lazy sense:
 	if self.funcPrefix then
-		code = self.funcPrefix..' '..code
+		ctx.code = self.funcPrefix..' '..ctx.code
 	end
 
-	result.srcfile = name..self.srcSuffix
-	result.objfile = name..self.env.objSuffix
-	result.libfile = self.env.libPrefix..name..self.env.libSuffix
-	self.libfiles:insert(result.libfile)
-	path(result.srcfile):write(code)
+	ctx.srcfile = self:getBuildDir()..'/'..ctx.name..self.srcSuffix
+	ctx.objfile = self:getBuildDir()..'/'..ctx.name..ctx.env.objSuffix
+	ctx.libfile = self:getBuildDir()..'/'..ctx.env.libPrefix..ctx.name..ctx.env.libSuffix
+print("******************************************************************")
+print("********************** ffi-c setting libfile "..ctx.libfile.." **********************")
+print("******************************************************************")
+print('ctx.env.libPrefix', ctx.env.libPrefix)
+print('ctx.name', ctx.name)
+print('ctx.env.libSuffix', ctx.env.libSuffix)
+	self.libfiles:insert(ctx.libfile)	-- collect lib files for cleanup afterwards
+	assert(path(ctx.srcfile):write(ctx.code))
 
-	return result
+	return ctx
 end
 
-function CClass:compile(args, result)
-	result = result or {}
-	local name = self.env.distName
-	self.env.objLogFile = name..'-obj.log'
-	local status, compileLog = self.env:buildObj(result.objfile, result.srcfile) 	-- TODO allow capture output log
-	result.compileLog = compileLog
+function CClass:compile(args, ctx)
+	ctx = ctx or {}
+	ctx.env.objLogFile = self:getBuildDir()..'/'..ctx.name..'-obj.log'
+	local status, compileLog = ctx.env:buildObj(ctx.objfile, ctx.srcfile) 	-- TODO allow capture output log
+	ctx.compileLog = compileLog
 	if not status then
-		result.error = "failed to build c code"
+		ctx.error = "failed to build c code"
 	end
-	return result
+	return ctx
 end
 
-function CClass:link(args, result)
-	result = result or {}
+function CClass:link(args, ctx)
+	ctx = ctx or {}
 
-	local objfiles = table{result.objfile}
-	self:addExtraObjFiles(objfiles, result)
+	local objfiles = table{ctx.objfile}
+	self:addExtraObjFiles(objfiles, ctx)
 
-	local name = self.env.distName
-	self.env.distLogFile = name..'-dist.log'
-	local status, linkLog = self.env:buildDist(result.libfile, objfiles)	-- TODO allow capture output log
-	result.linkLog = linkLog
+	ctx.env.distLogFile = self:getBuildDir()..'/'..ctx.name..'-dist.log'
+	local status, linkLog = ctx.env:buildDist(ctx.libfile, objfiles)	-- TODO allow capture output log
+	ctx.linkLog = linkLog
 	if not status then
-		result.error = "failed to link c code"
+		ctx.error = "failed to link c code"
 	end
-	return result
+	return ctx
 end
 
-function CClass:load(args, result)
-	result.lib = ffi.load('./'..result.libfile)
-	return result
+function CClass:load(args, ctx)
+	-- TODO somewhere these are being put in ./lib/tmp/ instead of just /tmp ...
+print("******************************************************************")
+print("********************** ffi-c loading lib "..ctx.libfile.." **********************")
+print("******************************************************************")
+	ctx.lib = ffi.load(ctx.libfile)
+	return ctx
 end
 
--- TODO rename 'result' to 'context'
-function CClass:build(args, result)
+-- TODO rename 'ctx' to 'context'
+function CClass:build(args, ctx)
 	if type(args) == 'string' then
 		args = {code = args}
 	else
 		assert(type(args) == 'table')
 	end
 
-	result = result or {}
+	ctx = ctx or {}
 
-	result = self:setup(args, result)
+	ctx = self:setup(args, ctx)
 
 	-- 2) compile to so
-	result = self:compile(args, result)
-	if result.error then return result end
+	ctx = self:compile(args, ctx)
+	if ctx.error then return ctx end
 
-	result = self:link(args, result)
-	if result.error then return result end
+	ctx = self:link(args, ctx)
+	if ctx.error then return ctx end
 
 	-- 3) load into ffi
-	result = self:load(args, result)
+	ctx = self:load(args, ctx)
+	if ctx.error then return ctx end
 
 	-- 4) don't delete the dynamic library! some OS's get mad when you delete a dynamically-loaded shared object
 	-- but go ahead and delete the source code
 	-- ffi __gc will delete the dll file once the lib is no longer used
---	path(result.srcfile):remove()
---	path(result.objfile):remove()
+--	path(ctx.srcfile):remove()
+--	path(ctx.objfile):remove()
 
-	return result
+	return ctx
 end
 
 -- subclasses can add any other .o's
@@ -185,10 +195,10 @@ function CClass:addExtraObjFiles(objfiles)
 end
 
 function CClass:func(prototype, body)
-	local result = self:build(prototype..'{'..body..'}')
-	if result.error then error(require 'ext.tolua'(result)) end
+	local ctx = self:build(prototype..'{'..body..'}')
+	if ctx.error then error(require 'ext.tolua'(ctx)) end
 	ffi.cdef(prototype..';')
-	return result.lib
+	return ctx.lib
 end
 
 return CClass()
