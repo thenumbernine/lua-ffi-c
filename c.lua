@@ -111,12 +111,6 @@ end
 	ctx.srcfile = self:getBuildDir()..'/'..ctx.name..self.srcSuffix
 	ctx.objfile = self:getBuildDir()..'/'..ctx.name..ctx.env.objSuffix
 	ctx.libfile = self:getBuildDir()..'/'..ctx.env.libPrefix..ctx.name..ctx.env.libSuffix
-print("******************************************************************")
-print("********************** ffi-c setting libfile "..ctx.libfile.." **********************")
-print("******************************************************************")
-print('ctx.env.libPrefix', ctx.env.libPrefix)
-print('ctx.name', ctx.name)
-print('ctx.env.libSuffix', ctx.env.libSuffix)
 	self.libfiles:insert(ctx.libfile)	-- collect lib files for cleanup afterwards
 	assert(path(ctx.srcfile):write(ctx.code))
 
@@ -150,10 +144,6 @@ function CClass:link(args, ctx)
 end
 
 function CClass:load(args, ctx)
-	-- TODO somewhere these are being put in ./lib/tmp/ instead of just /tmp ...
-print("******************************************************************")
-print("********************** ffi-c loading lib "..ctx.libfile.." **********************")
-print("******************************************************************")
 	ctx.lib = ffi.load(ctx.libfile)
 	return ctx
 end
