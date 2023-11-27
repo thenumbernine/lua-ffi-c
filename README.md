@@ -11,7 +11,7 @@ You can either manually invoke the compiler and the ffi prototype like so:
 
 ```lua
 local cpp = require 'cpp'
-local lib = cpp:compile[[ int sum(int a, int b) { return a + b; } ]]
+local lib = cpp:build[[ int sum(int a, int b) { return a + b; } ]]
 local ffi = require 'ffi'
 ffi.cdef[[ int sum(int a, int b); ]]
 print(lib.sum(a,b))

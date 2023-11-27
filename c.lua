@@ -66,13 +66,7 @@ end
 
 -- setup build env obj and write code file
 function CClass:setup(args)
-	local code
-	if type(args) == 'string' then
-		args = {code = args}
-	else
-		assert(type(args) == 'table')
-	end
-	code = args.code
+	local code = args.code
 
 	-- 1) write out code
 	local libIndex = #self.libfiles+1
@@ -121,7 +115,7 @@ end
 	return result
 end
 
-function CClass:build(args, result)
+function CClass:compile(args, result)
 	result = result or {}
 	local name = self.env.distName
 	self.env.objLogFile = name..'-obj.log'
@@ -154,11 +148,17 @@ function CClass:load(args, result)
 	return result
 end
 
-function CClass:compile(args)
+function CClass:build(args)
+	if type(args) == 'string' then
+		args = {code = args}
+	else
+		assert(type(args) == 'table')
+	end
+
 	local result = self:setup(args)
 
 	-- 2) compile to so
-	result = self:build(args, result)
+	result = self:compile(args, result)
 	if result.error then return result end
 
 	result = self:link(args, result)
@@ -181,7 +181,7 @@ function CClass:addExtraObjFiles(objfiles)
 end
 
 function CClass:func(prototype, body)
-	local result = self:compile(prototype..'{'..body..'}')
+	local result = self:build(prototype..'{'..body..'}')
 	if result.error then error(require 'ext.tolua'(result)) end
 	ffi.cdef(prototype..';')
 	return result.lib
