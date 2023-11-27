@@ -82,7 +82,7 @@ function CClass:setup(args, ctx)
 	ctx.env.useStatic = false	-- TODO arg
 
 -- [[
-	ctx.env.cppver = args.cppver or 'c11'		-- TODO this should be 'std' or 'stdver' instead of 'cppver' ... since this isn't C++, it's C
+	ctx.env.cppver = args.cppver or ctx.cppver or 'c11'		-- TODO this should be 'std' or 'stdver' instead of 'cppver' ... since this isn't C++, it's C
 	ctx.env:preConfig()		-- TODO ctor instead?
 	ctx.env:postConfig()
 --]]
