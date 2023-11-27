@@ -85,6 +85,7 @@ function CClass:setup(args, ctx)
 	ctx.env.cppver = args.cppver or ctx.cppver or 'c11'		-- TODO this should be 'std' or 'stdver' instead of 'cppver' ... since this isn't C++, it's C
 	ctx.env:preConfig()		-- TODO ctor instead?
 	ctx.env:postConfig()
+	ctx.env.include:append(ctx.include or {})
 --]]
 --[[ requires buildinfo file ...
 	ctx.env:setupBuild'release'
