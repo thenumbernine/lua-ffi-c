@@ -67,6 +67,7 @@ end
 -- setup build env obj and write code file
 function CClass:setup(args, ctx)
 	ctx = ctx or {}
+	ctx.srcSuffix = ctx.srcSuffix or self.srcSuffix
 
 	ctx.code = args.code
 
@@ -89,15 +90,17 @@ function CClass:setup(args, ctx)
 	ctx.env:setupBuild'release'
 --]]
 
--- TODO do this in make.env
--- determine compiler based on suffix
-if ctx.env.compiler == 'g++' then
-	ctx.env.compiler = 'gcc'
-end
-if ctx.env.linker == 'g++' then
-	ctx.env.linker = 'gcc'
-	ctx.env.libs:insert'm'
-end
+	-- TODO do this in make.env
+	-- determine compiler based on suffix
+	if ctx.srcSuffix == '.c' then
+		if ctx.env.compiler == 'g++' then
+			ctx.env.compiler = 'gcc'
+		end
+		if ctx.env.linker == 'g++' then
+			ctx.env.linker = 'gcc'
+			ctx.env.libs:insert'm'
+		end
+	end
 
 	-- TODO build this into the make.env somehow?
 	if ctx.env.name == 'msvc' then
@@ -108,7 +111,7 @@ end
 		ctx.code = self.funcPrefix..' '..ctx.code
 	end
 
-	ctx.srcfile = self:getBuildDir()..'/'..ctx.name..self.srcSuffix
+	ctx.srcfile = self:getBuildDir()..'/'..ctx.name..ctx.srcSuffix
 	ctx.objfile = self:getBuildDir()..'/'..ctx.name..ctx.env.objSuffix
 	ctx.libfile = self:getBuildDir()..'/'..ctx.env.libPrefix..ctx.name..ctx.env.libSuffix
 	self.libfiles:insert(ctx.libfile)	-- collect lib files for cleanup afterwards
