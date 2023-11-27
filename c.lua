@@ -65,7 +65,9 @@ function CClass:getBuildDir()
 end
 
 -- setup build env obj and write code file
-function CClass:setup(args)
+function CClass:setup(args, result)
+	result = result or {}
+
 	local code = args.code
 
 	-- 1) write out code
@@ -105,13 +107,12 @@ end
 		code = self.funcPrefix..' '..code
 	end
 
-	local result = {}
 	result.srcfile = name..self.srcSuffix
 	result.objfile = name..self.env.objSuffix
 	result.libfile = self.env.libPrefix..name..self.env.libSuffix
 	self.libfiles:insert(result.libfile)
 	path(result.srcfile):write(code)
-	
+
 	return result
 end
 
@@ -148,14 +149,17 @@ function CClass:load(args, result)
 	return result
 end
 
-function CClass:build(args)
+-- TODO rename 'result' to 'context'
+function CClass:build(args, result)
 	if type(args) == 'string' then
 		args = {code = args}
 	else
 		assert(type(args) == 'table')
 	end
 
-	local result = self:setup(args)
+	result = result or {}
+
+	result = self:setup(args, result)
 
 	-- 2) compile to so
 	result = self:compile(args, result)
@@ -163,10 +167,10 @@ function CClass:build(args)
 
 	result = self:link(args, result)
 	if result.error then return result end
-	
+
 	-- 3) load into ffi
 	result = self:load(args, result)
-	
+
 	-- 4) don't delete the dynamic library! some OS's get mad when you delete a dynamically-loaded shared object
 	-- but go ahead and delete the source code
 	-- ffi __gc will delete the dll file once the lib is no longer used
@@ -176,7 +180,7 @@ function CClass:build(args)
 	return result
 end
 
--- subclasses can add any other .o's 
+-- subclasses can add any other .o's
 function CClass:addExtraObjFiles(objfiles)
 end
 
