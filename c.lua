@@ -59,6 +59,11 @@ local function exec(cmd)
 	return table.unpack(results, 1, results.n)
 end
 
+-- what to set for windows?
+function CClass:getBuildDir()
+	return '/tmp'
+end
+
 function CClass:compile(args)
 	local code
 	if type(args) == 'string' then
@@ -70,7 +75,7 @@ function CClass:compile(args)
 
 	-- 1) write out code
 	local libIndex = #self.libfiles+1
-	local name = 'libtmp_'..self.cobjIndex..'_'..libIndex
+	local name = self:getBuildDir()..'/libtmp_'..self.cobjIndex..'_'..libIndex
 
 	self.env = MakeEnv()
 	self.env.distName = name
