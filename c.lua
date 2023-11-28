@@ -112,10 +112,6 @@ function CClass:setup(args, ctx)
 		if ctx.env.name == 'msvc' then
 			ctx.code = '__declspec(dllexport) ' .. ctx.code
 		end
-		-- for using ffi-c in the lazy sense:
-		if self.funcPrefix then
-			ctx.code = self.funcPrefix..' '..ctx.code
-		end
 	end
 
 	ctx.srcfile = self:getBuildDir()..'/'..ctx.name..ctx.srcSuffix
@@ -197,7 +193,14 @@ function CClass:addExtraObjFiles(objfiles)
 end
 
 function CClass:func(prototype, body)
-	local ctx = self:build(prototype..'{'..body..'}')
+	local code = prototype..'{'..body..'}'
+
+	-- for using ffi-c in the lazy sense:
+	if self.funcPrefix then
+		code = self.funcPrefix..' '..code
+	end
+
+	local ctx = self:build(code)
 	if ctx.error then error(require 'ext.tolua'(ctx)) end
 	ffi.cdef(prototype..';')
 	return ctx
