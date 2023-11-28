@@ -69,9 +69,13 @@ function CClass:setup(args, ctx)
 	ctx = ctx or {}
 	ctx.srcSuffix = ctx.srcSuffix or self.srcSuffix
 
+	-- ok code is optional for when you use this for just linking files
 	ctx.code = args.code
 
 	-- 1) write out code
+	-- TODO what happens when we want unique filenames but don't want to delete on cleanup?
+	-- 	or what if we run two ffi-c's simultaneously?
+	-- 	need better name picker ...
 	local libIndex = #self.libfiles+1
 	ctx.name = 'libtmp_'..self.cobjIndex..'_'..libIndex
 
@@ -103,20 +107,24 @@ function CClass:setup(args, ctx)
 		end
 	end
 
-	-- TODO build this into the make.env somehow?
-	if ctx.env.name == 'msvc' then
-		ctx.code = '__declspec(dllexport) ' .. ctx.code
-	end
-	-- for using ffi-c in the lazy sense:
-	if self.funcPrefix then
-		ctx.code = self.funcPrefix..' '..ctx.code
+	if ctx.code then	-- (in case I'm using this for just linking)
+		-- TODO build this into the make.env somehow?
+		if ctx.env.name == 'msvc' then
+			ctx.code = '__declspec(dllexport) ' .. ctx.code
+		end
+		-- for using ffi-c in the lazy sense:
+		if self.funcPrefix then
+			ctx.code = self.funcPrefix..' '..ctx.code
+		end
 	end
 
 	ctx.srcfile = self:getBuildDir()..'/'..ctx.name..ctx.srcSuffix
 	ctx.objfile = self:getBuildDir()..'/'..ctx.name..ctx.env.objSuffix
 	ctx.libfile = self:getBuildDir()..'/'..ctx.env.libPrefix..ctx.name..ctx.env.libSuffix
 	self.libfiles:insert(ctx.libfile)	-- collect lib files for cleanup afterwards
-	assert(path(ctx.srcfile):write(ctx.code))
+	if ctx.code then
+		assert(path(ctx.srcfile):write(ctx.code))
+	end
 
 	return ctx
 end
