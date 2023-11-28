@@ -200,7 +200,7 @@ function CClass:func(prototype, body)
 	local ctx = self:build(prototype..'{'..body..'}')
 	if ctx.error then error(require 'ext.tolua'(ctx)) end
 	ffi.cdef(prototype..';')
-	return ctx.lib
+	return ctx
 end
 
 return CClass()
