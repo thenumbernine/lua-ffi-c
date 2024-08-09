@@ -1,35 +1,15 @@
+require 'ext.gc'
 local ffi = require 'ffi'
-local GCWrapper = require 'ffi.gcwrapper.gcwrapper'
 local class = require 'ext.class'
 local path = require 'ext.path'
 local table = require 'ext.table'
 
 local MakeEnv = require 'make.env'
 
+-- used for unique naming
+local globalIndex = 0
 
--- this has to hold all compile classes - no overlaps are allowed
--- because it is used in the unique naming
--- keep track of stuff from __gc to :cleanup()
-local cobjs = table()
-
-local CClass = class(GCWrapper{
-	gctype = 'CClass_gc_t',
-	ctype = 'int',
-	release = function(ptr)
-		local index = ptr[0]
---print('releasing, ptr[0]='..index)
-		if index ~= 0 then
---print('releasing, ptr[0] nonzero')
-			local cobj = cobjs[index]
---print('releasing, cobj=', cobj)
-			if cobj then
---print('releasing, cleanup')
-				cobj:cleanup()
-			end
-			ptr[0] = 0
-		end
-	end,
-})
+local CClass = class()
 
 CClass.srcSuffix = '.c'
 CClass.funcPrefix = ''
@@ -37,9 +17,8 @@ CClass.funcPrefix = ''
 function CClass:init()
 	CClass.super.init(self)
 	self.libfiles = table()
-	cobjs:insert(self)
-	self.cobjIndex = #cobjs
-	self.gc.ptr[0] = self.cobjIndex
+	self.cobjIndex = globalIndex
+	globalIndex = globalIndex + 1
 end
 
 function CClass:cleanup()
@@ -48,8 +27,9 @@ function CClass:cleanup()
 		path(libfile):remove()
 -- TODO remove the other files , not just the library?
 	end
-	cobjs[self.cobjIndex] = nil
 end
+
+CClass.__gc = CClass.cleanup
 
 local function exec(cmd)
 	print(cmd)
