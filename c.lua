@@ -15,7 +15,6 @@ CClass.srcSuffix = '.c'
 CClass.funcPrefix = ''
 
 function CClass:init()
-	CClass.super.init(self)
 	self.libfiles = table()
 	self.cobjIndex = globalIndex
 	globalIndex = globalIndex + 1
