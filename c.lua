@@ -85,7 +85,7 @@ function CClass:setup(args, ctx)
 		end
 if WHY_CANT_I_JUST_ADD_EXTRA_LIBRARIES
 then
-	ctx.env.libs:append(WHY_CANT_I_JUST_ADD_EXTRA_LIBRARIES)
+	ctx.env.dynamicLibs:append(WHY_CANT_I_JUST_ADD_EXTRA_LIBRARIES)
 end
 	end
 
