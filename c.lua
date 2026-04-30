@@ -82,8 +82,11 @@ function CClass:setup(args, ctx)
 		end
 		if ctx.env.linker == 'g++' then
 			ctx.env.linker = 'gcc'
-			ctx.env.libs:insert'm'
 		end
+if WHY_CANT_I_JUST_ADD_EXTRA_LIBRARIES
+then
+	ctx.env.libs:append(WHY_CANT_I_JUST_ADD_EXTRA_LIBRARIES)
+end
 	end
 
 	if ctx.code then	-- (in case I'm using this for just linking)
